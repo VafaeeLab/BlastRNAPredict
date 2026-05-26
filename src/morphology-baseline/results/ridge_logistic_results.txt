@@ -1,0 +1,29 @@
+Training set  : n=65  (pos=32, neg=33)
+Validation set: n=10   (pos=6, neg=4)
+
+Optimal λ (1/C) : 4.605922   (C = 0.217112)
+Intercept       : 0.0959
+  Expansion : 0.2469
+  ICM       : -0.2173
+  TE        : -0.4075
+
+=======================================================
+  INTERNAL VALIDATION (10-fold CV, n=65 training)
+=======================================================
+  AUC         : 0.561
+  Accuracy    : 0.600
+  Sensitivity : 0.469
+  Specificity : 0.727
+
+=======================================================
+  EXTERNAL VALIDATION (n=10 validation set)
+=======================================================
+  AUC         : 0.667
+  Accuracy    : 0.600
+  Sensitivity : 0.667
+  Specificity : 0.500
+
+  Confusion matrix (external):
+    TP=4, FP=2, FN=2, TN=2
+    Predicted probabilities: [0.56  0.459 0.56  0.613 0.513 0.553 0.398 0.553 0.398 0.459]
+    True labels:             [1 1 1 1 1 0 1 0 0 0]

@@ -1,0 +1,6 @@
+lasso-by-data-split-ext-val.R contains feature selection code for external validation.
+
+10fold-lasso-LSOCV.R contains feature selection code for nested cross-validation.
+
+The shell scripts are to help me run the analysis. You can check them for the parameters that 
+I have supplied. Please note that they will not work here, as I have changed file names.

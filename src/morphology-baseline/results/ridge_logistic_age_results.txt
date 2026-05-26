@@ -1,0 +1,29 @@
+Training set  : n=65  (pos=32, neg=33)
+Validation set: n=10   (pos=6, neg=4)
+Age range (train): 22 – 40
+Age range (test) : 28 – 38
+
+Optimal λ (1/C) : 270.495973   (C = 0.003697)
+Intercept       : 1.9420
+  Age           : -0.0595
+
+=======================================================
+  INTERNAL VALIDATION (10-fold CV, n=65 training)
+=======================================================
+  AUC         : 0.626
+  Accuracy    : 0.569
+  Sensitivity : 0.531
+  Specificity : 0.606
+
+=======================================================
+  EXTERNAL VALIDATION (n=10 validation set)
+=======================================================
+  AUC         : 0.458
+  Accuracy    : 0.500
+  Sensitivity : 0.500
+  Specificity : 0.500
+
+  Confusion matrix (external):
+    TP=3, FP=2, FN=3, TN=2
+    Predicted probabilities: [0.45  0.421 0.569 0.436 0.539 0.554 0.569 0.495 0.495 0.525]
+    True labels:             [1 1 1 1 1 0 1 0 0 0]

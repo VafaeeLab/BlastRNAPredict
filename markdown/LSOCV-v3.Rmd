@@ -1,0 +1,210 @@
+---
+title: "LSOCV-v3"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r include, echo=F, warning=F}
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(DESeq2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(EnhancedVolcano))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(lme4))
+suppressPackageStartupMessages(library(MLmetrics))
+suppressPackageStartupMessages(library(openxlsx))
+suppressPackageStartupMessages(library(ROCR))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(umap))
+suppressPackageStartupMessages(library(org.Hs.eg.db))
+
+```
+
+
+
+```{r, echo=F}
+
+obtain.metrics <- function(df, label.ordering) {
+  # df contains true and pred as columns.
+  pred.class <- ifelse(df$pred >= 0.5, label.ordering[2], label.ordering[1])
+  auc.val <- AUC(df$pred, ifelse(df$true == label.ordering[2], 1, 0))
+  sens.val <- Sensitivity(df$true, pred.class, positive=label.ordering[2])
+  spec.val <- Specificity(df$true, pred.class, positive=label.ordering[2])
+  acc.val <- Accuracy(df$true, pred.class)
+  list("Accuracy"=acc.val,
+       "Sensitivity"=sens.val,
+       "Specificity"=spec.val,
+       "AUC"=auc.val)
+}
+
+obtain.bootstrap.metrics <- function(boot.runs, label.ordering=c("Negative", "Positive")) {
+  metric.df <- data.frame(matrix(data=NA, nrow=0, ncol=4))
+  pred.df <- data.frame(matrix(data=NA, nrow=0, ncol=2))
+  colnames(pred.df) <- c("pred", "true")
+  for (i in 1:length(boot.runs)) {
+    metric.boot <- obtain.metrics(boot.runs[[i]]$preds, label.ordering)
+    metric.df <- rbind(metric.df, metric.boot)
+    pred.df <- rbind(pred.df, 
+                     data.frame("pred"=boot.runs[[i]]$preds$pred,
+                                "true"=boot.runs[[i]]$preds$true))
+  }
+  metric.mean.df <- round(metric.df %>% colMeans, 3)
+  metric.quantiles <- metric.df %>% apply(2, \(x) {
+    metric.q <- quantile(x, c(0.025, 0.975))
+    paste0("(", round(metric.q[1], 3), "-", round(metric.q[2], 3), ")")
+  })
+  
+  metric.mean.df <- rbind(metric.mean.df, metric.quantiles)
+  
+  print(metric.mean.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+  
+  conf.factor <- factor(ifelse(pred.df$pred >= 0.5, label.ordering[2], label.ordering[1]), levels=label.ordering)
+  c.mat <- confusionMatrix(conf.factor, pred.df$true)
+  colnames(c.mat$table) <- paste0(colnames(c.mat$table), "-reference")
+  rownames(c.mat$table) <- paste0(rownames(c.mat$table), "-prediction")
+  print(c.mat$table %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+  # cat("\n\n Columns are the reference, rows are the predictions \n\n")
+  
+  roc.curve <- prediction(pred.df$pred, pred.df$true, label.ordering=label.ordering)
+  pred.roc <- performance(roc.curve, "tpr", "fpr")
+  perf.df <- data.frame(
+    "fpr"=unlist(pred.roc@x.values),
+    "tpr"=unlist(pred.roc@y.values)
+  )
+  p <- ggplot(perf.df, aes(fpr, tpr)) +
+    geom_line() +
+    geom_abline(slope=1, intercept=0, linetype=2, colour="black")
+  print(p)
+  
+  # cat("\n\n Hyperparams: \n\n")
+  # 
+  # if (boot.runs)
+  metric.mean.df[1,,drop=F]
+}
+
+```
+
+
+```{r, echo=F}
+
+prop.shower <- function(prop.data, threshold, show.t=T) {
+  prop.sel <- prop.data[,2:ncol(prop.data)] %>% rowMeans
+  prop.sel <- data.frame("feature"=prop.data[,1],
+                         "prop"=prop.sel)
+  p <- ggplot(prop.sel, aes(x=feature, y=prop)) +
+    coord_flip() +
+    geom_bar(stat="identity") +
+    theme(axis.text.x=element_text(angle=45, hjust=1, size=10),
+          axis.text.y=element_text(size=6)) +
+    ylab("proportion") +
+    xlab("")
+  if (show.t) {
+    p <- p + geom_hline(yintercept=threshold, colour="red", linetype=2)
+  }
+  print(p)
+  
+  sel.list <- prop.sel$feature[prop.sel$prop >= threshold]
+  if (show.t) {
+    cat("\n\n Selected features are: ", paste(sel.list, collapse=", "))
+  }
+  sel.list
+}
+
+```
+
+```{r, echo=F}
+
+sum.df <- data.frame(matrix(data=NA, nrow=0, ncol=5))
+colnames(sum.df) <- c("Name", "Accuracy", "Sensitivity", "Specificity", "AUC")
+
+```
+
+```{r, echo=F, results="asis"}
+
+for (i in c("ridge", "rf")) {
+  for (j in c("hCG", "lbo")) {
+    for (k in c(0.05, 0.1)) {
+      for (l in c("", "Age", "G1&G2&G3", "G1&G2&G3&Age", "G3", "G3&Age")) {
+        metric.data <- readRDS(paste0("../results/kfold-10fold-panel-LSOCV/model-", i, "_panel-10foldlasso_max-iter-1_k-10_meta-", l, "_filter-", k, "_class-", j, "/combine-42.rds"))
+      
+        meta.name.list <- c()
+        if (grepl("G1", l)) {
+          meta.name.list <- c(meta.name.list, "g1")
+        }
+        if (grepl("G2", l)) {
+          meta.name.list <- c(meta.name.list, "g2")
+        }
+        if (grepl("G3", l)) {
+          meta.name.list <- c(meta.name.list, "g3")
+        }
+        if (grepl("Age", l)) {
+          meta.name.list <- c(meta.name.list, "age")
+        }
+        meta.name <- paste0(meta.name.list, collapse="+")
+
+        cat("\n\n# model=",i, "filter=",k, "outcome=", j, "clin feat=", ifelse(meta.name!="", meta.name, "none"), "\n\n")
+        if (j == "hCG") {
+          sum.df <- rbind(sum.df, data.frame("Name"=paste0("model-", i, "_filt-", k, "_class-", j, "_clin.feat-", meta.name), obtain.bootstrap.metrics(metric.data)))
+        } else if (j == "lbo") {
+          sum.df <- rbind(sum.df, data.frame("Name"=paste0("model-", i, "_filt-", k, "_class-", j, "_clin.feat-", meta.name), obtain.bootstrap.metrics(metric.data, c("NPO", "Live_birth"))))
+        }
+      }
+    }
+  }
+}
+
+
+```
+
+# Features
+
+I have attached the features that were identified in each fold for each
+filtration percentage.
+
+```{r, echo=F}
+
+gtf <- readRDS('../data/gtf.rds')
+gtf.df <- data.frame(gene_id=gtf$gene_id, gene_name=gtf$gene_name, gene_type=gtf$gene_type) %>% distinct
+gtf.df.protein.coding <- dplyr::filter(gtf.df, gene_type=='protein_coding')
+gene.df <- gtf.df %>% tibble::column_to_rownames('gene_id') %>% dplyr::mutate(entrez=suppressWarnings(suppressMessages(mapIds(org.Hs.eg.db, keys = gsub('\\.[0-9]+', '', gtf.df$gene_id),
+                                                                                                                              column = "ENTREZID", keytype = "ENSEMBL"))))
+```
+
+## 0.05 filter
+
+```{r, echo=F}
+
+filter.0.05 <- readRDS("../src/novel-discovery/kfold-specific-panel/10fold-lasso-panel_filter-5-count-0.05-prop.rds")
+names(filter.0.05) <- paste0("fold-", 1:10)
+for (i in 1:length(filter.0.05)) {
+  fold.run <- filter.0.05[[i]]
+  matched.names <- gene.df$gene_name[match(fold.run, rownames(gene.df))]
+  filter.0.05[[i]] <- matched.names
+}
+filter.0.05
+```
+
+
+## 0.1 filter
+
+```{r, echo=F}
+
+filter.0.1 <- readRDS("../src/novel-discovery/kfold-specific-panel/10fold-lasso-panel_filter-5-count-0.1-prop.rds")
+names(filter.0.1) <- paste0("fold-", 1:10)
+for (i in 1:length(filter.0.1)) {
+  fold.run <- filter.0.1[[i]]
+  matched.names <- gene.df$gene_name[match(fold.run, rownames(gene.df))]
+  filter.0.1[[i]] <- matched.names
+}
+filter.0.1
+```
+
+# Summary:
+
+```{r, echo=F, results="asis"}
+rownames(sum.df) <- NULL
+print(sum.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+```
+

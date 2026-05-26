@@ -1,0 +1,364 @@
+---
+title: "meta-data"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r include, echo=F, warning=F}
+
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggvenn))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(MLmetrics))
+suppressPackageStartupMessages(library(ROCR))
+suppressPackageStartupMessages(library(tidyr))
+
+source("../src/novel-discovery/obtain-data.R")
+source("../src/novel-discovery/load-data.R")
+
+```
+
+```{r, echo=F}
+
+prop.shower <- function(prop.data, threshold, show.t=T) {
+  prop.sel <- prop.data[,2:ncol(prop.data)] %>% rowMeans
+  prop.sel <- data.frame("feature"=prop.data[,1],
+                         "prop"=prop.sel)
+  p <- ggplot(prop.sel, aes(x=feature, y=prop)) +
+    coord_flip() +
+    geom_bar(stat="identity") +
+    theme(axis.text.x=element_text(angle=45, hjust=1, size=10),
+          axis.text.y=element_text(size=6)) +
+    ylab("proportion") +
+    xlab("")
+  if (show.t) {
+    p <- p + geom_hline(yintercept=threshold, colour="red", linetype=2)
+  }
+  print(p)
+  
+  sel.list <- prop.sel$feature[prop.sel$prop >= threshold]
+  if (show.t) {
+    cat("\n\n Selected features are: ", paste(sel.list, collapse=", "))
+  }
+  sel.list
+}
+
+```
+
+```{r, echo=F}
+
+obtain.metrics <- function(df) {
+  # df contains true and pred as columns.
+  pred.class <- ifelse(df$pred >= 0.5, "Positive", "Negative")
+  auc.val <- AUC(df$pred, ifelse(df$true == "Positive", 1, 0))
+  sens.val <- Sensitivity(df$true, pred.class, positive="Positive")
+  spec.val <- Specificity(df$true, pred.class, positive="Positive")
+  acc.val <- Accuracy(df$true, pred.class)
+  list("Accuracy"=acc.val,
+       "Sensitivity"=sens.val,
+       "Specificity"=spec.val,
+       "AUC"=auc.val)
+}
+
+obtain.bootstrap.metrics <- function(boot.runs) {
+  metric.df <- data.frame(matrix(data=NA, nrow=0, ncol=4))
+  pred.df <- data.frame(matrix(data=NA, nrow=0, ncol=2))
+  colnames(pred.df) <- c("pred", "true")
+  for (i in 1:length(boot.runs)) {
+    # fold.1.i <- which(boot.runs[[i]]$fold == 2)
+    # metric.boot <- obtain.metrics(boot.runs[[i]][fold.1.i,])
+    metric.boot <- obtain.metrics(boot.runs[[i]])
+    metric.df <- rbind(metric.df, metric.boot)
+    pred.df <- rbind(pred.df, 
+                     data.frame("pred"=boot.runs[[i]]$pred,
+                                "true"=boot.runs[[i]]$true))
+    # pred.df <- rbind(pred.df, 
+    #                  data.frame("pred"=boot.runs[[i]]$pred[fold.1.i],
+    #                             "true"=boot.runs[[i]]$true[fold.1.i]))
+  }
+  metric.mean.df <- round(metric.df %>% colMeans, 3)
+  metric.quantiles <- metric.df %>% apply(2, \(x) {
+    metric.q <- quantile(x, c(0.025, 0.975))
+    paste0("(", round(metric.q[1], 3), "-", round(metric.q[2], 3), ")")
+  })
+  
+  metric.mean.df <- rbind(metric.mean.df, metric.quantiles)
+  
+  print(metric.mean.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+  
+  roc.curve <- prediction(pred.df$pred, pred.df$true, label.ordering=c("Negative", "Positive"))
+  pred.roc <- performance(roc.curve, "tpr", "fpr")
+  perf.df <- data.frame(
+    "fpr"=unlist(pred.roc@x.values),
+    "tpr"=unlist(pred.roc@y.values)
+  )
+  p <- ggplot(perf.df, aes(fpr, tpr)) +
+    geom_line() +
+    geom_abline(slope=1, intercept=0, linetype=2, colour="black")
+  print(p)
+  
+  metric.mean.df[1,,drop=F]
+}
+
+```
+
+```{r, echo=F}
+
+p.df <- data.frame(matrix(data=NA, nrow=0, ncol=2))
+colnames(p.df) <- c("Name", "p.value")
+
+```
+
+```{r, echo=F}
+
+data <- load.data(path.to.root="..")
+```
+
+```{r, echo=F}
+
+val.data.6 <- read.xlsx("../data/Including Day4_Validation chorts_260324.xlsx", sheet=8)
+val.data.6 <- val.data.6$Seq_Sample_ID
+train.6.i <- which(!data$meta.data$seq.id %in% val.data.6)
+
+train.6 <- list("meta.data"=data$meta.data[train.6.i,],
+                "x"=data$x[train.6.i,])
+# Add stage to data.
+train.6$meta.data$stage <- ifelse(grepl("AA", train.6$meta.data$Emb_stage), 1, 
+                                 ifelse(grepl("AB|BA", train.6$meta.data$Emb_stage), 2,
+                                        ifelse(grepl("BB", train.6$meta.data$Emb_stage), 3, 4)))
+train.6$meta.data$stage <- factor(train.6$meta.data$stage, levels=c(1, 2, 3, 4))
+
+all.train <- list("meta.data"=data$meta.data,
+                  "x"=data$x)
+
+```
+
+```{r, echo=F}
+
+get.reg.data <- function(meta.data, col.interest) {
+  morph.train <- data.frame("hCG.result"=meta.data$hCG_Result)
+  morph.train[col.interest] <- meta.data[col.interest]
+
+  min.mod <- glm(hCG.result~1, morph.train, family=binomial)
+  max.mod <- glm(hCG.result~., morph.train, family=binomial)
+  print(summary(max.mod))
+  
+  print(anova(min.mod, max.mod, test="LRT"))
+  list("Name"=col.interest, "p.value"=anova(min.mod, max.mod, test="LRT")[2, "Pr(>Chi)"])
+}
+
+```
+
+# Introduction
+
+Here, I conduct statistical analysis on different meta-data. I have summaries of the p-values in a table under each section. It is called
+"pvalue summary". There are also printouts of the statistical analysis
+if you want to see effect sizes and other statistical information, like
+deviance of the model, etc.
+
+In summary, it seems that G3 and Age are the only features that are 
+significantly different in the negative hcg group vs positive hcg group.
+
+# Meta data analysis using the entire dataset
+
+Here, I have used the entire 75 patients for statistical analysis.
+
+## Age
+
+```{r, echo=F}
+p.df <- rbind(p.df, get.reg.data(all.train$meta.data, "Age"))
+
+```
+
+## Morphological data
+
+### G1
+
+```{r, echo=F}
+p.df <- rbind(p.df, get.reg.data(all.train$meta.data, "G1"))
+
+```
+
+G1 doesn't seem significant.
+
+### G2
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(all.train$meta.data, "G2"))
+
+```
+
+G2 doesn't seem significant.
+
+### G3
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(all.train$meta.data, "G3"))
+
+```
+
+## IVF_center
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(data$meta.data, "IVF_center"))
+
+```
+
+The IVF center is likely not important. However, I will note that we only have ~10
+samples from the Uppsala site - the variance will be very large here, likely
+contributing to much higher p-values too.
+
+
+## Attempt_nr
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(data$meta.data, "Attempt_nr"))
+
+```
+
+## Culture_Day
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(data$meta.data, "Culture_Day"))
+
+```
+
+## Hormonal_Treatment
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(data$meta.data, "Hormonal_Treatment"))
+
+```
+
+## Method
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(data$meta.data, "Method"))
+
+```
+
+## Media
+
+```{r, echo=F}
+
+p.df <- rbind(p.df, get.reg.data(data$meta.data, "Media"))
+
+```
+
+## pvalue summary
+
+```{r, echo=F, results="asis"}
+
+p.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered")
+
+```
+
+# Meta data analysis using the training set of val-6
+
+Here, I've conducted statistical analysis on the 65 patients in the
+training set of val-6.
+
+```{r, echo=F}
+
+val.6.p.df <- data.frame(matrix(data=NA, nrow=0, ncol=2))
+colnames(val.6.p.df) <- c("Name", "p.value")
+
+```
+
+## Age
+
+```{r, echo=F}
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "Age"))
+
+```
+
+
+## Morphological data
+
+### G1
+
+```{r, echo=F}
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "G1"))
+
+```
+
+G1 doesn't seem significant.
+
+### G2
+
+```{r, echo=F}
+
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "G2"))
+
+```
+
+G2 doesn't seem significant.
+
+### G3
+
+```{r, echo=F}
+
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "G3"))
+
+```
+
+By the regression, it appears that G3 is impactful to the
+performance. I'll include this in our regression
+modelling.
+
+
+## IVF_center
+
+Please note that val6 is separated by IVF_center. I.e. the column
+associated with the ivf centre is not changing in the training set.
+Hence, I have not done the analysis here.
+
+## Attempt_nr
+
+```{r, echo=F}
+
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "Attempt_nr"))
+
+```
+
+## Culture_Day
+
+```{r, echo=F}
+
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "Culture_Day"))
+
+```
+
+## Hormonal_Treatment
+
+```{r, echo=F}
+
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "Hormonal_Treatment"))
+
+```
+
+## Method
+
+```{r, echo=F}
+
+val.6.p.df <- rbind(val.6.p.df, get.reg.data(train.6$meta.data, "Method"))
+
+```
+
+## pvalue summary
+
+```{r, echo=F, results="asis"}
+
+val.6.p.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered")
+
+```

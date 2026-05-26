@@ -1,0 +1,9 @@
+fold-panel-by-data-split.R contains the code for external validation.
+
+internal-fold-panel-by-data-split.R contains the code for internal validation
+based on the training set given by the validation set. E.g. for validation set
+6, we have 10 in the test set. This file will run internal validation with
+CV (user supplied parameters) on the remaining 65 samples.
+
+The shell scripts are to help me run the analysis. You can check them for the parameters that 
+I have supplied. Please note that they will not work here, as I have changed file names.

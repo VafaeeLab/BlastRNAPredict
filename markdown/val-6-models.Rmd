@@ -1,0 +1,247 @@
+---
+title: "val-6-models"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r include, echo=F, warning=F}
+suppressPackageStartupMessages(library(caret))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(MLmetrics))
+suppressPackageStartupMessages(library(ROCR))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(org.Hs.eg.db))
+
+source("../src/novel-discovery/obtain-data.R")
+source("../src/novel-discovery/load-data.R")
+
+```
+
+```{r, echo=F}
+
+prop.shower <- function(prop.data, threshold, show.t=T) {
+  prop.sel <- prop.data[,2:ncol(prop.data)] %>% rowMeans
+  prop.sel <- data.frame("feature"=prop.data[,1],
+                         "prop"=prop.sel)
+  p <- ggplot(prop.sel, aes(x=feature, y=prop)) +
+    coord_flip() +
+    geom_bar(stat="identity") +
+    theme(axis.text.x=element_text(angle=45, hjust=1, size=10),
+          axis.text.y=element_text(size=6)) +
+    ylab("proportion") +
+    xlab("")
+  if (show.t) {
+    p <- p + geom_hline(yintercept=threshold, colour="red", linetype=2)
+  }
+  print(p)
+  
+  sel.list <- prop.sel$feature[prop.sel$prop >= threshold]
+  if (show.t) {
+    cat("\n\n Selected features are: ", paste(sel.list, collapse=", "))
+  }
+  sel.list
+}
+
+```
+
+```{r, echo=F}
+
+obtain.metrics <- function(df, label.ordering) {
+  # df contains true and pred as columns.
+  pred.class <- ifelse(df$pred >= 0.5, label.ordering[2], label.ordering[1])
+  auc.val <- AUC(df$pred, ifelse(df$true == label.ordering[2], 1, 0))
+  sens.val <- Sensitivity(df$true, pred.class, positive=label.ordering[2])
+  spec.val <- Specificity(df$true, pred.class, positive=label.ordering[2])
+  acc.val <- Accuracy(df$true, pred.class)
+  list("Accuracy"=acc.val,
+       "Sensitivity"=sens.val,
+       "Specificity"=spec.val,
+       "AUC"=auc.val)
+}
+
+obtain.bootstrap.metrics <- function(boot.runs, label.ordering=c("Negative", "Positive")) {
+  metric.df <- data.frame(matrix(data=NA, nrow=0, ncol=4))
+  pred.df <- data.frame(matrix(data=NA, nrow=0, ncol=2))
+  colnames(pred.df) <- c("pred", "true")
+  for (i in 1:length(boot.runs)) {
+    # fold.1.i <- which(boot.runs[[i]]$fold == 2)
+    metric.boot <- obtain.metrics(boot.runs[[i]]$preds, label.ordering)
+    metric.df <- rbind(metric.df, metric.boot)
+    pred.df <- rbind(pred.df, 
+                     data.frame("pred"=boot.runs[[i]]$preds$pred,
+                                "true"=boot.runs[[i]]$preds$true))
+  }
+  metric.mean.df <- round(metric.df %>% colMeans, 3)
+  metric.quantiles <- metric.df %>% apply(2, \(x) {
+    metric.q <- quantile(x, c(0.025, 0.975))
+    paste0("(", round(metric.q[1], 3), "-", round(metric.q[2], 3), ")")
+  })
+  
+  metric.mean.df <- rbind(metric.mean.df, metric.quantiles)
+  
+  print(metric.mean.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+  
+  conf.factor <- factor(ifelse(pred.df$pred >= 0.5, label.ordering[2], label.ordering[1]), levels=label.ordering)
+  c.mat <- confusionMatrix(conf.factor, pred.df$true)
+  colnames(c.mat$table) <- paste0(colnames(c.mat$table), "-reference")
+  rownames(c.mat$table) <- paste0(rownames(c.mat$table), "-prediction")
+  print(c.mat$table %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+  # cat("\n\n Columns are the reference, rows are the predictions \n\n")
+  
+  
+  roc.curve <- prediction(pred.df$pred, pred.df$true, label.ordering=label.ordering)
+  pred.roc <- performance(roc.curve, "tpr", "fpr")
+  perf.df <- data.frame(
+    "fpr"=unlist(pred.roc@x.values),
+    "tpr"=unlist(pred.roc@y.values)
+  )
+  p <- ggplot(perf.df, aes(fpr, tpr)) +
+    geom_line() +
+    geom_abline(slope=1, intercept=0, linetype=2, colour="black")
+  print(p)
+  
+  metric.mean.df[1,,drop=F]
+}
+
+```
+
+```{r, echo=F}
+
+sum.df <- data.frame(matrix(data=NA, nrow=0, ncol=5))
+colnames(sum.df) <- c("Name", "Accuracy", "Sensitivity", "Specificity", "AUC")
+internal.df <- data.frame(matrix(data=NA, nrow=0, ncol=5))
+colnames(internal.df) <- c("Name", "Accuracy", "Sensitivity", "Specificity", "AUC")
+
+```
+
+```{r, echo=F}
+
+data <- load.data(path.to.root="..")
+
+```
+
+# Introduction
+
+Model metrics for validation set 6. Note that these metrics include
+internal and external validation. I have run internal and external
+validation over 10 iterations of 10 fold cross-validation. 
+E.g. In my first training instance, I have trained a model on 
+folds 2-10, then tested on fold 1 (internal
+validation) and on validation set 6 (external validation). I then
+repeated for the rest of the folds and remaining 9 iterations. Thus, I
+should have 10 predictions for each sample in the training set. The 
+external validation should have more - 100 predictions for each sample
+in the ext-val set.
+
+Please note that the confusion matrices
+are of 10 iterations of 10 fold cross validation. I.e. for internal
+10-fold cross validation, we should have 10*65=650 predictions - 10 
+predictions for each sample in the training set since we have 10
+iterations. For external validation,
+we should have 10*10*10=1000 predictions - 10 iterations and 10 folds
+for 10 patients in the validation set. The numbers of patients in each 
+confusion matrix should sum to their respective values that are listed.
+
+
+```{r, echo=F, results="asis"}
+for (i in c("ridge", "rf")) {
+  for (j in c("hCG", "lbo")) {
+    for (k in c(0.05, 0.1)) {
+      for (l in c("", "Age", "G1&G2&G3", "G1&G2&G3&Age", "G3", "G3&Age")) {
+        
+        meta.name.list <- c()
+        if (grepl("G1", l)) {
+          meta.name.list <- c(meta.name.list, "g1")
+        }
+        if (grepl("G2", l)) {
+          meta.name.list <- c(meta.name.list, "g2")
+        }
+        if (grepl("G3", l)) {
+          meta.name.list <- c(meta.name.list, "g3")
+        }
+        if (grepl("Age", l)) {
+          meta.name.list <- c(meta.name.list, "age")
+        }
+        meta.name <- paste0(meta.name.list, collapse="+")
+
+        cat("\n\n# model=",i, "filter=",k, "outcome=", j, "clin feat=", ifelse(meta.name!="", meta.name, "none"), "\n\n")
+        cat("\n\n## Internal validation \n\n")
+        internal.data <- readRDS(paste0("../results/kfold-panel-by-validation-split-internal/6/model-", i, "_panel-val-6-lasso_max-iter-10_k-10_meta-", l, "_filter-", k, "_class-", j, "/combine-42.rds"))
+        if (j == "hCG") {
+          internal.df <- rbind(internal.df, data.frame("Name"=paste0("model-", i, "_filt-", k, "_class-", j, "_clin.feat-", meta.name), obtain.bootstrap.metrics(internal.data)))
+        } else if (j == "lbo") {
+          internal.df <- rbind(internal.df, data.frame("Name"=paste0("model-", i, "_filt-", k, "_class-", j, "_clin.feat-", meta.name), obtain.bootstrap.metrics(internal.data, c("NPO", "Live_birth"))))
+        }
+        
+        cat("\n\n## External validation \n\n")
+        metric.data <- readRDS(paste0("../results/kfold-panel-by-validation-split/6/model-", i, "_panel-val-6-lasso_max-iter-10_k-10_meta-", l, "_filter-", k, "_class-", j, "/combine-42.rds"))
+        if (j == "hCG") {
+          sum.df <- rbind(sum.df, data.frame("Name"=paste0("model-", i, "_filt-", k, "_class-", j, "_clin.feat-", meta.name), obtain.bootstrap.metrics(metric.data)))
+        } else if (j == "lbo") {
+          sum.df <- rbind(sum.df, data.frame("Name"=paste0("model-", i, "_filt-", k, "_class-", j, "_clin.feat-", meta.name), obtain.bootstrap.metrics(metric.data, c("NPO", "Live_birth"))))
+        }
+      }
+    }
+  }
+}
+
+```
+
+```{r, echo=F}
+
+# blah.df <- readRDS("../results/kfold-panel-by-validation-split-internal/6/model-ridge_panel-val-6-lasso_max-iter-10_k-10_meta-_filter-0.05_class-hcg/combine-42.rds")
+# blah.df[[1]]$preds$true
+# obtain.bootstrap.metrics(blah.df)
+
+```
+
+
+# Features
+
+```{r, echo=F}
+
+gtf <- readRDS('../data/gtf.rds')
+gtf.df <- data.frame(gene_id=gtf$gene_id, gene_name=gtf$gene_name, gene_type=gtf$gene_type) %>% distinct
+gtf.df.protein.coding <- dplyr::filter(gtf.df, gene_type=='protein_coding')
+gene.df <- gtf.df %>% tibble::column_to_rownames('gene_id') %>% dplyr::mutate(entrez=suppressWarnings(suppressMessages(mapIds(org.Hs.eg.db, keys = gsub('\\.[0-9]+', '', gtf.df$gene_id),
+                                                                                                                              column = "ENTREZID", keytype = "ENSEMBL"))))
+```
+
+## 0.05 filter
+
+```{r, echo=F}
+
+filter.0.05 <- readRDS("../results/feature-selection/lasso-by-validation-split/6/max-iter-1000/prop-sels.rds")
+gene.df$gene_name[match(filter.0.05, rownames(gene.df))]
+
+```
+
+
+## 0.1 filter
+
+```{r, echo=F}
+
+filter.0.1 <- readRDS("../results/feature-selection/lasso-by-validation-split-0.1-prop/6/max-iter-1000/prop-sels.rds")
+gene.df$gene_name[match(filter.0.1, rownames(gene.df))]
+```
+
+# Summary
+
+## Internal validation
+
+```{r, echo=F, results="asis"}
+rownames(internal.df) <- NULL
+print(internal.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+```
+
+## External validation
+
+```{r, echo=F, results="asis"}
+rownames(sum.df) <- NULL
+print(sum.df %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered"))
+```
+
