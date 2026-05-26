@@ -1,0 +1,24 @@
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# R session artefacts
+.Rhistory
+.RData
+.Rproj.user/
+
+# Python artefacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
