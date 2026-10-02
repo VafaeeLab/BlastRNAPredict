@@ -1,5 +1,5 @@
 ---
-title: "LSOCV-v4-reviewer-comments-28-07-26"
+title: "LSOCV-v4-sensitivity-analysis"
 output: 
   html_document:
     toc: yes
@@ -116,10 +116,7 @@ prop.shower <- function(prop.data, threshold, show.t=T) {
 
 # Introduction
 
-This file goes over the updated feature selection and metrics based on
-the bootstrap at the parent level. The results presented here are based
-on LSOCV with no information leakage (separate feature selection
-across 10 folds).
+Sensitivity analysis based on reviewer comments 28/07/26.
 
 # Feature selection with updated bootstrap
 
