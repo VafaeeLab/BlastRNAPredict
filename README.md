@@ -6,7 +6,7 @@ Predicting IVF pregnancy outcome from RNA content in blastocyst fluid conditione
 
 ## Overview
 
-BFCM is the spent culture medium surrounding an embryo prior to transfer. This project develops and validates a prediction model for pregnancy outcome (urine hCG result and live birth) based on small RNA sequencing of BFCM samples, and benchmarks it against standard morphological assessment alone.
+ This project develops and validates a prediction model for pregnancy outcome (urine hCG result and live birth) based on polyadenylated RNA sequencing of BFCM samples, and benchmarks it against standard morphological assessment alone.
 
 The pipeline includes:
 
