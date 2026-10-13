@@ -22,3 +22,6 @@ __pycache__/
 
 # OS
 Thumbs.db
+
+*.Rproj
+.DS_Store

@@ -1,6 +1,10 @@
 lasso-by-data-split-ext-val.R contains feature selection code for external validation.
 
-10fold-lasso-LSOCV.R contains feature selection code for nested cross-validation.
-
 The shell scripts are to help me run the analysis. You can check them for the parameters that 
 I have supplied. Please note that they will not work here, as I have changed file names.
+
+I have also supplied the parent-level (sensitivity analysis) feature selection
+scripts for external validation.
+
+Note that feature selection for SSCV is included directly in the cross-validation script.
+It is under src/novel-discovery/LSOCV/repeated-kfold-10fold-panel-LSOCV-parallel-more-feature-sel-clean.R

@@ -1,0 +1,45 @@
+---
+title: "Sensitivity analysis 13-10-2026"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r include, echo=F, warning=F}
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(stringr))
+
+```
+
+
+```{r, echo=F}
+
+metrics <- readRDS("../src/novel-discovery/kfold-specific-panel/metrics-fixed-parent-level.rds")
+metrics <- metrics[complete.cases(metrics),]
+```
+
+```{r, echo=F}
+k <- metrics$file.name %>% str_extract("(?<=_k-).*(?=_boots)")
+iter <- metrics$file.name %>% str_extract("(?<=-iter-).*(?=_k-)")
+boots <- metrics$file.name %>% str_extract("(?<=_boots-).*(?=_sel-prop)")
+filter.val <- metrics$file.name %>% str_extract("(?<=_filter-).*(?=_sel)")
+class.val <- metrics$file.name %>% str_extract("(?<=_class-).*(?=)")
+meta.data <- metrics$file.name %>% str_extract("(?<=_meta-).*(?=_filter-)")
+
+metrics.up <- metrics
+metrics.up$file.name <- NULL
+metrics.up <- metrics.up[,-c(5,6,7,8)]
+metrics.up$class <- class.val
+metrics.up$k <- k
+metrics.up$iter <- iter
+metrics.up$boots <- boots
+metrics.up$filter <- filter.val
+metrics.up$meta.data <- meta.data
+rownames(metrics.up) <- NULL
+metrics.up %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered")
+
+```
+
+

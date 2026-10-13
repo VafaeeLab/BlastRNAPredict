@@ -1,0 +1,72 @@
+---
+title: "Stratified sibling clean 13-10-2026"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+```{r include, echo=F, warning=F}
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(kableExtra))
+suppressPackageStartupMessages(library(stringr))
+
+```
+
+
+```{r, echo=F}
+
+metrics <- readRDS("../src/novel-discovery/kfold-specific-panel/metrics-fixed.rds")
+metrics <- metrics[complete.cases(metrics),]
+```
+
+```{r, echo=F}
+k <- metrics$file.name %>% str_extract("(?<=_k-).*(?=_boots)")
+iter <- metrics$file.name %>% str_extract("(?<=-iter-).*(?=_k-)")
+boots <- metrics$file.name %>% str_extract("(?<=_boots-).*(?=_sel-prop)")
+filter.val <- metrics$file.name %>% str_extract("(?<=_filter-).*(?=_sel)")
+class.val <- metrics$file.name %>% str_extract("(?<=_class-).*(?=)")
+meta.data <- metrics$file.name %>% str_extract("(?<=_meta-).*(?=_filter-)")
+
+metrics.up <- metrics
+metrics.up$file.name <- NULL
+metrics.up <- metrics.up[,-c(5,6,7,8)]
+metrics.up$class <- class.val
+metrics.up$k <- k
+metrics.up$iter <- iter
+metrics.up$boots <- boots
+metrics.up$filter <- filter.val
+metrics.up$meta.data <- meta.data
+rownames(metrics.up) <- NULL
+metrics.up[c(1:4),] %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered")
+
+```
+
+# Method
+
+- 10% filtration of RNA, preprocessing is kept the same as in the manuscript.
+
+- Split our parents into 10 folds and 10/50 iterations. (i.e. sibling stratified)
+  The splits were conducted such that each fold contained similar number of parents
+  who had at least one hcg positive embryo 
+
+- For each fold, use the training folds to conduct feature selection. 
+  Feature selection will involve bootstrapping the training data 100 times,
+  and then running an L1-logistic regression on each bootstrap. A feature
+  that has been selected by any of these bootstraps will be used in the
+  predictive model. Hyperparameters: Lambda value is chosen to be the "lambda.1se"
+  value. I.e. it is the lambda that results in a cross-validated deviance that 
+  is within 1 standard error of the minimum cross-validated deviance.
+  
+- After selection of the RNA, we optionally add on meta-data that we want to
+  include as a predictor.
+  
+- Train an L2-regularised logistic regression on the training folds, and then
+  test on the held-out fold. Hyperparameters: Lambda value is chosen to be the
+  "lambda.min" value.
+  
+- Record the AUC/sens/spec for this iteration, and then repeat.
+
+- Finally, the median metrics for AUC, sens, and spec are reported.
+  
+

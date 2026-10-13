@@ -1,0 +1,6 @@
+repeated-kfold-10fold-panel-LSOCV-parallel-more-feature-sel-clean.R contains code to 
+help run multiple iterations of stratified sibling cross-validation. Feature selection
+is included in each fold.
+
+Once the results have been generated, metric-script-clean.R aggregates the
+results.
