@@ -38,7 +38,7 @@ metrics.up$boots <- boots
 metrics.up$filter <- filter.val
 metrics.up$meta.data <- meta.data
 rownames(metrics.up) <- NULL
-metrics.up[c(1:4),] %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered")
+metrics.up %>% kbl(format="html", align="c") %>% kable_styling(full_width = F, position="left", bootstrap_options="bordered")
 
 ```
 
