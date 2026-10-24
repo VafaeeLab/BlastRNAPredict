@@ -10,7 +10,6 @@ Predicting IVF pregnancy outcome from RNA content in blastocyst fluid conditione
 
 The pipeline includes:
 
-- DESeq2-based normalisation of raw RNA-seq counts
 - Bootstrap-enhanced LASSO feature selection to identify a stable gene panel
 - Ridge regression (L2-penalised logistic regression) as the primary classifier
 - Random Forest as a secondary comparator
@@ -26,9 +25,10 @@ The pipeline includes:
 BlastRNAPredict-main/
 ├── data/
 │   ├── raw_counts.txt.gz                          # Raw RNA-seq count matrix (genes × samples)
-│   ├── metadata_260525.xlsx                        # Sample metadata (all samples + BF cohort sheet)
-│   ├── Including Day4_Validation chorts_260324.xlsx  # Proposed train/validation splits (6 configs)
-│   └── Validation cohort suggestions_with variables_260319.xlsx  # Earlier split proposals
+│   ├── gtf.rds                                     # Stores information about genes
+│   ├── Metadata for Github_260925.xlsx                        # Sample metadata (all samples + BF cohort sheet)
+│   ├── Metadata validation cohort Github_260925.xlsx  # Proposed validation split
+│   └── Validation cohort suggestions_with variables_260319.xlsx  # Similar to above, but retained to enable running with scripts
 │
 ├── src/
 │   ├── novel-discovery/                # R scripts — main RNA-based pipeline
@@ -155,6 +155,8 @@ Age does not generalise to the external cohort (AUC < 0.5), confirming it carrie
 - `caret`, `DESeq2`, `edgeR`, `glmnet`, `openxlsx`, `dplyr`, `tidyr`
 - `ROCR`, `MLmetrics`, `org.Hs.eg.db`
 - `EnhancedVolcano`, `umap`, `lme4`, `kableExtra`
+- `randomForest`, `pROC`, `matrixStats`, `R.utils`,
+- `stringr`, `tibble`, `optparse`
 
 ### Python (baseline models)
 
