@@ -8,7 +8,6 @@ suppressPackageStartupMessages({
   library(caret)
   library(dplyr)
   library(glmnet)
-  library(mRMRe)
   library(openxlsx)
   library(parallel)
   library(pROC)

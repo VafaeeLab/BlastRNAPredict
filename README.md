@@ -63,8 +63,8 @@ BlastRNAPredict-main/
 │           └── ridge_logistic_age_results.txt  # Age model results (raw output)
 │
 ├── markdown/                           # R Markdown analysis notebooks
-│   ├── LSOCV-v3.Rmd / .html           # LSOCV analysis and results
 │   ├── val-6-models.Rmd / .html        # External validation across 6 split configurations
+│   ├── val-6-models-metadata-analysis.Rmd / .html        # Metadata analysis with n=10 and n=65
 │   ├── stratified-sibling-with-meta-data-clean-13-10-2026.Rmd / .html # SSCV
 │   ├── sensitivity-analysis-stratified-sibling-with-meta-data-clean-13-10-2026.Rmd / .html # sensitivity nalysis
 │   └── meta-data.Rmd / .html           # Metadata exploration and QC
@@ -165,6 +165,10 @@ Install with:
 ```bash
 pip install scikit-learn pandas numpy openpyxl
 ```
+
+### Other tools for running shell scripts
+
+- `GNU parallel`
 
 ---
 

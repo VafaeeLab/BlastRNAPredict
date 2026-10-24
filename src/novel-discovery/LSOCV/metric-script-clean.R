@@ -40,4 +40,4 @@ for (i in 1:length(data.file)) {
 metric.df
 
 # Save metric.df
-saveRDS(metric.df, "./src/novel-discovery/kfold-specific-panel/metrics-fixed.rds")
+saveRDS(metric.df, "./src/novel-discovery/LSOCV/metrics-fixed.rds")

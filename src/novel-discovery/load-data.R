@@ -32,7 +32,7 @@ load.data <- function(path.to.root=".", filter=0.05) {
   # # Match by sample_id
   # sample_info$seq.id <- mapping$Seq_Sample_ID[match(sample_info$sample_id, mapping$sample_id)]
   # 
-  # # Now, load in the additional metadata provided by Omid
+  # # Now, load in the additional metadata provided
   # add.meta <- read.xlsx(file.path(path.to.root, "data/Clinical variables in BF samples.xlsx"))
   # sample_info$og.order <- 1:nrow(sample_info)
   # sample_info <- merge(sample_info, add.meta, by.x="seq.id", by.y="Seq_Sample_ID")
