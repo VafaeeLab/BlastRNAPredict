@@ -3,9 +3,7 @@ data.file <- list.files("./results/repeated-kfold-10fold-panel-LSOCV-more-featur
 
 metric.df <- data.frame(matrix(data=NA, nrow=length(data.file) - 1, ncol=9))
 
-colnames(metric.df) <- c("Accuracy", "Sensitivity", "Specificity", "AUC", 
-                         "Accuracy (mean)", "Sensitivity (mean)", "Specificity (mean)",
-                         "AUC (mean)", "file.name")
+colnames(metric.df) <- c("Accuracy", "Sensitivity", "Specificity", "AUC", "file.name")
 
 for (i in 1:length(data.file)) {
   file <- data.file[i]
@@ -36,10 +34,6 @@ for (i in 1:length(data.file)) {
   }
   metric.df[i,] <- c(ci.write(data$acc.c), ci.write(data$sens.c),
                     ci.write(data$spec.c), ci.write(data$auc.c),
-                    ci.write(data$acc.c, median=F),
-                    ci.write(data$sens.c, median=F),
-                    ci.write(data$spec.c, median=F),
-                    ci.write(data$auc.c, median=F),
                     strsplit(file, split="/")[[1]][4])
 }
 

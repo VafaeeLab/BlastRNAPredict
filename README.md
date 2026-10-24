@@ -37,7 +37,7 @@ BlastRNAPredict-main/
 │   │   ├── helper.R                    # Shared utility functions
 │   │   ├── feature-select/             # Bootstrap-LASSO feature selection
 │   │   │   ├── lasso-by-data-split-ext-val.R   # Feature selection for external validation
-│   │   │   ├── 10fold-lasso-LSOCV.R            # Nested feature selection for LSOCV
+│   │   │   ├── sensitivity-analysis-lasso-by-data-split-parent-level.R #Feature selection for external validation with patient level bootstrap
 │   │   │   ├── *.sh                            # Shell scripts to run on HPC
 │   │   │   └── file-descriptions               # Description of scripts in this folder
 │   │   ├── external-validation/        # External validation scripts
@@ -46,8 +46,12 @@ BlastRNAPredict-main/
 │   │   │   ├── *.sh                                # HPC shell scripts
 │   │   │   └── file-descriptions
 │   │   └── LSOCV/                      # Sibling-stratified 10-fold CV
-│   │       ├── kfold-10fold-panel-LSOCV.R
-│   │       └── kfold-10fold-panel-LSOCV.sh
+│   │       ├── repeated-kfold-10fold-panel-LSOCV-parallel-more-feature-sel-clean.R
+│   │       ├── sensitivity-analysis-repeated-kfold-10fold-panel-LSOCV-parallel-more-feature-sel-clean
+│   │       ├── metric-script-clean.R
+│   │       ├── *.sh
+│   │       └── file-descriptions
+
 │   │
 │   └── morphology-baseline/            # Python — morphology and age baseline models
 │       ├── ridge_logistic.py           # Ridge logistic regression using Emb_stage features
@@ -60,6 +64,8 @@ BlastRNAPredict-main/
 ├── markdown/                           # R Markdown analysis notebooks
 │   ├── LSOCV-v3.Rmd / .html           # LSOCV analysis and results
 │   ├── val-6-models.Rmd / .html        # External validation across 6 split configurations
+│   ├── stratified-sibling-with-meta-data-clean-13-10-2026.Rmd / .html # SSCV
+│   ├── sensitivity-analysis-stratified-sibling-with-meta-data-clean-13-10-2026.Rmd / .html # sensitivity nalysis
 │   └── meta-data.Rmd / .html           # Metadata exploration and QC
 │
 ├── docs/
