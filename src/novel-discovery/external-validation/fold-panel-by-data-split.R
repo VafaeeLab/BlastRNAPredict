@@ -36,7 +36,9 @@ option_list <- list(
   make_option(c("-f", "--filter"), type="numeric", default=0.05,
               help="Filter prop"),
   make_option(c("-d", "--class"), type="character", default="hcg",
-              help="Class system to use.")
+              help="Class system to use."),
+  make_option(c("-D", "--directory"), type="character", default="kfold-panel-by-validation-split",
+              help="Directory")
 )
 
 ############################

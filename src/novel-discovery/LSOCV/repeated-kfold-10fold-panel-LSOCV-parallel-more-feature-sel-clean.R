@@ -249,6 +249,7 @@ run.lsocv <- function(count, sample_info) {
         lr.data <- data.frame(train.data, "y"=train.y)
         model <- glm(y~., family="binomial", data=lr.data)
         val.preds <- predict(model, data.frame(val.data), type="response")
+        train.preds <- predict(model, data.frame(train.data), type="response")
       } else {
         # Use cross-validation to obtain a list of the out-of-sample errors vs
         # the grid of lambdas.
@@ -267,6 +268,7 @@ run.lsocv <- function(count, sample_info) {
       lr.data <- data.frame(train.data, "y"=train.y)
       model <- glm(y~., family="binomial", data=lr.data)
       val.preds <- predict(model, data.frame(val.data), type="response")
+      train.preds <- predict(model, data.frame(train.data), type="response")
     } else if (model.to.use == "rf") {
       tc <- trainControl(method='LGOCV',
                          number=100,

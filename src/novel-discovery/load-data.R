@@ -12,8 +12,7 @@ load.data <- function(path.to.root=".", filter=0.05) {
   sample_info$G1 <- factor(sample_info$G1)
   sample_info$G2 <- factor(sample_info$G2)
   sample_info$G3 <- factor(sample_info$G3)
-  # Add stage to data - Note that this will not be used as a feature,
-  # per Omid's request.
+  # Add stage to data
   sample_info$stage <- ifelse(grepl("AA", sample_info$Emb_stage), 1, 
                                     ifelse(grepl("AB|BA", sample_info$Emb_stage), 2,
                                            ifelse(grepl("BB", sample_info$Emb_stage), 3, 4)))
@@ -21,25 +20,6 @@ load.data <- function(path.to.root=".", filter=0.05) {
   
   # Change the parental code (OPU_nr) to be named code.
   sample_info$code <- sample_info$OPU_nr
-  
-  # Load the additional metadata provided by Omid - commented out as 
-  # my code doesn't need it now.
-  
-  # # Load BF_ID mapping to sample_ID.
-  # mapping <- read.xlsx(file.path(path.to.root, "data/ML_meta_sample_ID_mapping.xlsx")) %>%
-  #   dplyr::select(all_of(c("Seq_Sample_ID", "sample_id")))
-  
-  # # Match by sample_id
-  # sample_info$seq.id <- mapping$Seq_Sample_ID[match(sample_info$sample_id, mapping$sample_id)]
-  # 
-  # # Now, load in the additional metadata provided
-  # add.meta <- read.xlsx(file.path(path.to.root, "data/Clinical variables in BF samples.xlsx"))
-  # sample_info$og.order <- 1:nrow(sample_info)
-  # sample_info <- merge(sample_info, add.meta, by.x="seq.id", by.y="Seq_Sample_ID")
-  # sample_info <- sample_info[order(sample_info$og.order),]
-  # sample_info$og.order <- NULL
-  # sample_info$hCG_Result <- factor(sample_info$hCG_Result, levels=c("Negative", "Positive"))
-  # sample_info$Emb_stage <- substr(sample_info$Emb_stage, 2, nchar(sample_info$Emb_stage))
   
   # Load in the count data.
   x <- read.table(file.path(path.to.root, 'data/raw_counts.txt.gz'), row.names=1, header=T) %>% as.matrix

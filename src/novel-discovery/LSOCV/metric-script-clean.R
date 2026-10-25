@@ -1,7 +1,7 @@
 
 data.file <- list.files("./results/repeated-kfold-10fold-panel-LSOCV-more-feature-sel", full.names=T)
 
-metric.df <- data.frame(matrix(data=NA, nrow=length(data.file) - 1, ncol=9))
+metric.df <- data.frame(matrix(data=NA, nrow=length(data.file) - 1, ncol=5))
 
 colnames(metric.df) <- c("Accuracy", "Sensitivity", "Specificity", "AUC", "file.name")
 

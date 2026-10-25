@@ -1,5 +1,5 @@
 ---
-title: "val-6-metadata-analysis"
+title: "val-6-models-metadata-median"
 output: 
   html_document:
     toc: yes
@@ -75,11 +75,39 @@ obtain.bootstrap.metrics <- function(boot.runs, label.ordering=c("Negative", "Po
                      data.frame("pred"=boot.runs[[i]]$preds$pred,
                                 "true"=boot.runs[[i]]$preds$true))
   }
-  metric.mean.df <- round(metric.df %>% colMeans, 3)
+  # metric.mean.df <- round(metric.df %>% colMeans, 3)
+  metric.mean.df <- round(apply(metric.df, 2, median), 3)
+  
+  ci.write <- function(data, median=T) {
+    # Bootstrap
+    B <- 10000
+    boot.metric.list <- c()
+    for (i in 1:B) {
+      boot.metrics <- sample(data, size=length(data), replace=T)
+      if (median) {
+        boot.metric.list <- c(boot.metric.list, median(boot.metrics))
+      } else{
+        boot.metric.list <- c(boot.metric.list, mean(boot.metrics))
+      }
+    }
+    lower <- quantile(boot.metric.list, c(0.025))
+    upper <- quantile(boot.metric.list, c(0.975))
+    if (median) {
+      metric.value <- median(data)
+    } else {
+      metric.value <- mean(data)
+    }
+    paste0("(", round(lower, 3), "-", round(upper, 3), ")")
+  }
+  
   metric.quantiles <- metric.df %>% apply(2, \(x) {
-    metric.q <- quantile(x, c(0.025, 0.975))
-    paste0("(", round(metric.q[1], 3), "-", round(metric.q[2], 3), ")")
+    ci.write(x)
   })
+  
+  # metric.quantiles <- metric.df %>% apply(2, \(x) {
+  #   metric.q <- quantile(x, c(0.025, 0.975))
+  #   paste0("(", round(metric.q[1], 3), "-", round(metric.q[2], 3), ")")
+  # })
   
   metric.mean.df <- rbind(metric.mean.df, metric.quantiles)
   
