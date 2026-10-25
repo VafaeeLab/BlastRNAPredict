@@ -28,7 +28,8 @@ BlastRNAPredict-main/
 │   ├── gtf.rds                                     # Stores information about genes
 │   ├── Metadata for Github_260925.xlsx                        # Sample metadata (all samples + BF cohort sheet)
 │   ├── Metadata validation cohort Github_260925.xlsx  # Proposed validation split
-│   └── Validation cohort suggestions_with variables_260319.xlsx  # Similar to above, but retained to enable running with scripts
+│   ├── Including Day4_Validation chorts_260324.xlsx  # Similar to above, but retained for reproducibility
+│   └── Validation cohort suggestions_with variables_260319.xlsx  # Similar to above, but retained for reproducibility
 │
 ├── src/
 │   ├── novel-discovery/                # R scripts — main RNA-based pipeline
